@@ -1,23 +1,35 @@
 /*====================================================================
     PROJECT: DBA Performance Lab
     DATABASE: Microsoft SQL Server
-    PURPOSE:
-        Learn SQL Server database administration, relational modelling,
-        query tuning, indexing, performance and VLDB concepts.
 
-    TABLE RELATIONSHIPS:
+    PURPOSE:
+        Practical SQL Server laboratory covering:
+
+        - Relational database design
+        - Primary Keys and Foreign Keys
+        - Data integrity
+        - Database population
+        - SQL performance analysis
+        - Execution plans
+        - Query tuning
+        - Nonclustered indexes
+        - Covering indexes
+        - Data modelling
+        - VLDB (Very Large Database) concepts
+
+    RELATIONSHIPS:
 
         Customers
             |
-            | 1 : Many
+            | 1 : MANY
             v
         Orders
             |
-            | 1 : Many
+            | 1 : MANY
             v
         OrderItems
             ^
-            | Many : 1
+            | MANY : 1
             |
         Products
 
@@ -25,19 +37,14 @@
 
 
 /*====================================================================
-    STEP 1 - CREATE THE DATABASE
+    STEP 1 - CREATE DATABASE
 ====================================================================*/
 
--- Creates a new SQL Server database called DBA_Performance_Lab.
 CREATE DATABASE DBA_Performance_Lab;
 GO
 
-
--- Changes the current database context.
--- All commands after this point will run against DBA_Performance_Lab.
 USE DBA_Performance_Lab;
 GO
-
 
 
 /*====================================================================
@@ -46,50 +53,28 @@ GO
 
 CREATE TABLE Customers (
 
-    -- Unique identifier for each customer.
+    -- BIGINT supports very large integer values.
     --
-    -- BIGINT:
-    -- Allows very large integer values.
+    -- IDENTITY(1,1) automatically generates IDs:
+    -- 1, 2, 3, 4...
     --
-    -- IDENTITY(1,1):
-    -- SQL Server automatically generates the number.
-    -- Starts at 1 and increases by 1.
-    --
-    -- PRIMARY KEY:
-    -- Uniquely identifies every customer.
+    -- PRIMARY KEY uniquely identifies each customer.
 
     CustomerID BIGINT IDENTITY(1,1) PRIMARY KEY,
 
-
-    -- Customer name is required.
-    -- VARCHAR(150) allows up to 150 characters.
-    --
-    -- NOT NULL means the value cannot be empty.
-
+    -- Customer name is mandatory.
     CustomerName VARCHAR(150) NOT NULL,
 
-
-    -- Email is mandatory.
-    --
-    -- UNIQUE prevents two customers from having
-    -- the same email address.
-
+    -- Email is mandatory and cannot be duplicated.
     Email VARCHAR(255) NOT NULL UNIQUE,
 
-
-    -- Country is optional because we haven't specified NOT NULL.
-
+    -- Optional country.
     Country VARCHAR(50),
 
-
-    -- Automatically records when the customer was created.
-    --
-    -- DATETIME2 stores date + time.
-    -- GETDATE() returns the current date/time.
-
+    -- Automatically records creation date/time.
     CreatedAt DATETIME2 DEFAULT GETDATE()
 );
-
+GO
 
 
 /*====================================================================
@@ -98,32 +83,18 @@ CREATE TABLE Customers (
 
 CREATE TABLE Products (
 
-    -- Automatically generated Product ID.
-
     ProductID BIGINT IDENTITY(1,1) PRIMARY KEY,
-
-
-    -- Product name is mandatory.
 
     ProductName VARCHAR(200) NOT NULL,
 
-
-    -- Product category is optional.
-
     Category VARCHAR(100),
 
-
-    -- DECIMAL(12,2) means:
-    --
-    -- Maximum 12 digits in total
-    -- 2 digits after the decimal point.
-    --
-    -- Example:
-    -- 4500.99
+    -- DECIMAL(12,2):
+    -- Up to 12 digits total, with 2 decimal places.
 
     Price DECIMAL(12,2) NOT NULL
 );
-
+GO
 
 
 /*====================================================================
@@ -132,53 +103,37 @@ CREATE TABLE Products (
 
 CREATE TABLE Orders (
 
-    -- Unique ID for every order.
-
     OrderID BIGINT IDENTITY(1,1) PRIMARY KEY,
 
-
-    -- Identifies which customer made the order.
-    --
-    -- This will become a FOREIGN KEY.
-
+    -- Identifies the customer who placed the order.
     CustomerID BIGINT NOT NULL,
 
-
-    -- Automatically records the order date/time
-    -- if one isn't provided.
-
+    -- Uses current date/time when no value is provided.
     OrderDate DATETIME2 DEFAULT GETDATE(),
 
-
-    -- Example values:
+    -- Example:
     -- Completed
     -- Pending
     -- Cancelled
 
     Status VARCHAR(30),
 
-
     /*--------------------------------------------------------------
-        FOREIGN KEY CONSTRAINT
+        FOREIGN KEY
+        Orders -> Customers
     --------------------------------------------------------------*/
 
-    -- We give the relationship a meaningful name:
-    -- FK_Orders_Customers
-
     CONSTRAINT FK_Orders_Customers
-
         FOREIGN KEY (CustomerID)
-
         REFERENCES Customers(CustomerID)
 );
+GO
 
 
 /*
-    This relationship means:
+    RELATIONSHIP:
 
         Customers
-            |
-            | CustomerID
             |
             | 1
             |
@@ -186,14 +141,13 @@ CREATE TABLE Orders (
             v
         Orders
 
+    One customer can have many orders.
 
-    One customer can have MANY orders.
+    Every CustomerID stored in Orders must reference an existing
+    customer.
 
-    But every order must reference an existing customer.
-
-    This is called REFERENTIAL INTEGRITY.
+    This helps enforce REFERENTIAL INTEGRITY.
 */
-
 
 
 /*====================================================================
@@ -202,93 +156,64 @@ CREATE TABLE Orders (
 
 CREATE TABLE OrderItems (
 
-    -- Unique identifier for each order line.
-
     OrderItemID BIGINT IDENTITY(1,1) PRIMARY KEY,
-
-
-    -- Identifies the order.
 
     OrderID BIGINT NOT NULL,
 
-
-    -- Identifies the product.
-
     ProductID BIGINT NOT NULL,
-
-
-    -- Number of units purchased.
 
     Quantity INT NOT NULL,
 
-
-    -- We store the price at the moment the order was made.
-    --
-    -- This is important because the current product price
-    -- could change in the future.
-
+    -- Stores the product price at the time of purchase.
     UnitPrice DECIMAL(12,2) NOT NULL,
 
-
     /*--------------------------------------------------------------
-        RELATIONSHIP 1
+        FOREIGN KEY
         OrderItems -> Orders
     --------------------------------------------------------------*/
 
     CONSTRAINT FK_OrderItems_Orders
-
         FOREIGN KEY (OrderID)
-
         REFERENCES Orders(OrderID),
 
-
     /*--------------------------------------------------------------
-        RELATIONSHIP 2
+        FOREIGN KEY
         OrderItems -> Products
     --------------------------------------------------------------*/
 
     CONSTRAINT FK_OrderItems_Products
-
         FOREIGN KEY (ProductID)
-
         REFERENCES Products(ProductID)
 );
-
+GO
 
 
 /*
-    Our complete relational model is now:
-
+    COMPLETE DATA MODEL:
 
     CUSTOMERS
-    ----------
+    ----------------
     CustomerID (PK)
          |
-         |
          | 1 : MANY
-         |
          v
     ORDERS
-    ----------
+    ----------------
     OrderID (PK)
     CustomerID (FK)
          |
-         |
          | 1 : MANY
-         |
          v
     ORDER ITEMS
-    ----------
+    ----------------
     OrderItemID (PK)
     OrderID (FK)
     ProductID (FK)
          |
-         |
          | MANY : 1
-         |
          v
     PRODUCTS
-    ----------
+    ----------------
     ProductID (PK)
 
 
@@ -297,69 +222,357 @@ CREATE TABLE OrderItems (
 */
 
 
-
 /*====================================================================
-    STEP 6 - VIEW THE DATA
+    STEP 6 - VIEW TABLE DATA
 ====================================================================*/
 
--- Show all customers.
 SELECT *
 FROM Customers;
 
-
--- Show all products.
 SELECT *
 FROM Products;
 
-
--- Show all orders.
 SELECT *
 FROM Orders;
 
-
--- Show all order items.
 SELECT *
 FROM OrderItems;
 
 
-
 /*====================================================================
-    STEP 7 - VIEW ONLY A SAMPLE OF ORDERS
+    STEP 7 - VIEW A SAMPLE OF ORDERS
 ====================================================================*/
 
--- TOP 20 prevents SQL Server from returning every row.
---
--- This becomes particularly important later when our Orders table
--- contains hundreds of thousands or millions of records.
+-- TOP prevents SQL Server from returning the entire table.
+-- This becomes increasingly important as the database grows.
 
 SELECT TOP 20 *
 FROM Orders;
 
 
-
 /*====================================================================
-    STEP 8 - COUNT THE RECORDS
+    STEP 8 - CHECK NUMBER OF RECORDS
 ====================================================================*/
-
--- Count customers.
 
 SELECT COUNT(*) AS TotalCustomers
 FROM Customers;
 
-
--- Count products.
-
 SELECT COUNT(*) AS TotalProducts
 FROM Products;
-
-
--- Count orders.
 
 SELECT COUNT(*) AS TotalOrders
 FROM Orders;
 
-
--- Count order items.
-
 SELECT COUNT(*) AS TotalOrderItems
 FROM OrderItems;
+
+
+/*====================================================================
+    STEP 9 - OPTIONAL DATABASE CLEANUP
+
+    WARNING:
+    Run this section ONLY when you intentionally want to remove
+    the generated test data.
+====================================================================*/
+
+USE DBA_Performance_Lab;
+GO
+
+-- Child tables must be cleared before parent tables because
+-- Foreign Key relationships exist.
+
+DELETE FROM OrderItems;
+DELETE FROM Orders;
+DELETE FROM Products;
+DELETE FROM Customers;
+
+
+-- Reset IDENTITY values back to zero.
+-- The next generated ID will therefore start at 1.
+
+DBCC CHECKIDENT ('OrderItems', RESEED, 0);
+DBCC CHECKIDENT ('Orders', RESEED, 0);
+DBCC CHECKIDENT ('Products', RESEED, 0);
+DBCC CHECKIDENT ('Customers', RESEED, 0);
+
+PRINT 'Database cleaned successfully.';
+GO
+
+
+/*====================================================================
+    STEP 10 - VERIFY DATABASE COUNTS
+====================================================================*/
+
+SELECT COUNT(*) AS Customers
+FROM Customers;
+
+SELECT COUNT(*) AS Products
+FROM Products;
+
+SELECT COUNT(*) AS Orders
+FROM Orders;
+
+SELECT COUNT(*) AS OrderItems
+FROM OrderItems;
+
+
+/*====================================================================
+    STEP 11 - PERFORMANCE TEST BEFORE INDEXING
+
+    PURPOSE:
+        Measure how SQL Server retrieves orders for one customer
+        before creating a useful index.
+
+    TEST DATABASE:
+        5,000 Customers
+        500 Products
+        50,000 Orders
+        124,634 OrderItems
+
+    TEST:
+        Find orders belonging to CustomerID 2500.
+
+    OBSERVED BEFORE OPTIMIZATION:
+        Rows returned: 7
+        Logical reads: 283
+        Execution plan: Clustered Index Scan
+
+    INTERPRETATION:
+        SQL Server does not currently have an index designed to
+        search Orders efficiently by CustomerID.
+
+        It therefore scans the clustered structure looking for
+        matching records.
+====================================================================*/
+
+USE DBA_Performance_Lab;
+GO
+
+SET STATISTICS IO ON;
+SET STATISTICS TIME ON;
+
+SELECT
+    OrderID,
+    CustomerID,
+    OrderDate,
+    Status
+FROM Orders
+WHERE CustomerID = 2500;
+
+SET STATISTICS IO OFF;
+SET STATISTICS TIME OFF;
+
+
+/*====================================================================
+    STEP 12 - FIRST QUERY OPTIMIZATION
+
+    CREATE A NONCLUSTERED INDEX ON CustomerID
+
+    PURPOSE:
+        CustomerID is used in the WHERE condition:
+
+            WHERE CustomerID = 2500
+
+        Creating an index allows SQL Server to locate matching
+        CustomerID values directly rather than scanning the
+        clustered index.
+====================================================================*/
+
+CREATE NONCLUSTERED INDEX IX_Orders_CustomerID
+ON Orders(CustomerID);
+GO
+
+
+/*====================================================================
+    STEP 13 - TEST PERFORMANCE AFTER BASIC INDEX
+====================================================================*/
+
+SET STATISTICS IO ON;
+SET STATISTICS TIME ON;
+
+SELECT
+    OrderID,
+    CustomerID,
+    OrderDate,
+    Status
+FROM Orders
+WHERE CustomerID = 2500;
+
+SET STATISTICS IO OFF;
+SET STATISTICS TIME OFF;
+
+
+/*
+    OBSERVED EXECUTION PLAN:
+
+        Index Seek (NonClustered)
+                 |
+                 v
+            Key Lookup
+                 |
+                 v
+           Nested Loops
+
+
+    IMPROVEMENT:
+
+        BEFORE:
+            Clustered Index Scan
+
+        AFTER:
+            Nonclustered Index Seek
+
+
+    SQL Server can now efficiently locate CustomerID = 2500.
+
+
+    HOWEVER:
+
+        The execution plan also contains a Key Lookup.
+
+        The index currently contains CustomerID, but the query
+        also needs:
+
+            OrderDate
+            Status
+
+        SQL Server therefore uses the nonclustered index to find
+        the matching records and then accesses the clustered
+        index to retrieve the additional columns.
+
+        In our execution plan, the Key Lookup represented a large
+        proportion of the estimated query cost.
+
+        We can improve this further with a COVERING INDEX.
+*/
+
+
+/*====================================================================
+    STEP 14 - CREATE A COVERING INDEX
+
+    IMPORTANT:
+        This is the NEXT section to execute.
+
+    PURPOSE:
+        Eliminate the Key Lookup by storing the additional columns
+        required by the query inside the nonclustered index.
+====================================================================*/
+
+
+-- First remove the basic index created during the previous experiment.
+
+DROP INDEX IX_Orders_CustomerID
+ON Orders;
+GO
+
+
+-- Recreate the index as a covering index.
+--
+-- CustomerID:
+-- Used to search/filter the data.
+--
+-- INCLUDE:
+-- Stores additional columns at the leaf level of the index so
+-- SQL Server can return them without performing a Key Lookup.
+
+CREATE NONCLUSTERED INDEX IX_Orders_CustomerID
+ON Orders(CustomerID)
+INCLUDE (
+    OrderDate,
+    Status
+);
+GO
+
+
+/*
+    Why isn't OrderID explicitly included?
+
+    OrderID is the clustered Primary Key of Orders.
+
+    SQL Server includes the clustered key as the row locator in
+    nonclustered indexes, so it can already be available to satisfy
+    this query.
+*/
+
+
+/*====================================================================
+    STEP 15 - TEST THE COVERING INDEX
+====================================================================*/
+
+SET STATISTICS IO ON;
+SET STATISTICS TIME ON;
+
+SELECT
+    OrderID,
+    CustomerID,
+    OrderDate,
+    Status
+FROM Orders
+WHERE CustomerID = 2500;
+
+SET STATISTICS IO OFF;
+SET STATISTICS TIME OFF;
+
+
+/*
+    EXPECTED EXECUTION PLAN:
+
+            Index Seek (NonClustered)
+                     |
+                     v
+                   SELECT
+
+
+    The Key Lookup should disappear because the index now contains
+    the columns needed by this query.
+
+
+    ================================================================
+                    QUERY TUNING COMPARISON
+    ================================================================
+
+    STAGE 1 - NO CUSTOMER INDEX
+
+        Clustered Index Scan
+
+        Observed:
+        283 logical reads
+        7 rows returned
+
+
+    STAGE 2 - BASIC NONCLUSTERED INDEX
+
+        Index Seek
+             +
+        Key Lookup
+
+        Improvement:
+        SQL Server can efficiently locate CustomerID.
+
+        Remaining problem:
+        Additional columns must be retrieved from the clustered
+        index.
+
+
+    STAGE 3 - COVERING NONCLUSTERED INDEX
+
+        Index Seek
+
+        Expected improvement:
+        Key Lookup eliminated.
+        Fewer data-page accesses.
+        More efficient query execution.
+
+
+    This demonstrates an important DBA/query-tuning workflow:
+
+        1. Identify a query
+        2. Measure performance
+        3. Examine the execution plan
+        4. Identify scans/lookups
+        5. Create an appropriate index
+        6. Measure again
+        7. Refine the index
+        8. Compare before vs after
+
+====================================================================*/
